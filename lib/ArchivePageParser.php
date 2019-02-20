@@ -42,18 +42,22 @@ class ArchivePageParser {
         $i = 0;
         while ($div = $all_divs->item($i++)) {
             $div_class = $div->hasAttribute('class') ? $div->getAttribute('class') : '';
-            if (strpos($div_class, 'list_item') === 0) {
+            if (strpos($div_class, 'article-item-box') === 0) {
                 $_anchors = $div->getElementsByTagName('a');
                 $j = 0;
                 while ($target = $_anchors->item($j++)) {
-                    if ($target->parentNode->hasAttribute('class') && $target->parentNode->getAttribute('class') === 'link_title') {
+                    if ($target->parentNode->hasAttribute('class') && $target->parentNode->getAttribute('class') === 'content') {
                         $this->_post_list[] = array(
-                            'url' => $blog_base_url . $target->getAttribute('href'),
-                            'title' => trim($target->nodeValue)
+                            'url' => $target->getAttribute('href')
+                            // 'url' => $blog_base_url . $target->getAttribute('href')
+                            // , 'title' => trim($target->nodeValue)
                         );
+
+                        // echo '\nurl:' . $target->getAttribute('href');
+                        // echo '\ntitle:' . trim($target->nodeValue);
                     }
                 }
-            } else if ($div_class === 'pagelist') {
+            } else if ($div_class === 'paginatio-box') {
                 $pagination_div = $div;
             }
         }

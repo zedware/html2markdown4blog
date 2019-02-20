@@ -33,7 +33,7 @@ class PostPageParser {
 
     public function reset() {
         $this->_title = '';
-        $this->_date = '';
+        $this->_date = 0;
         $this->_tags = array();
         $this->_categories = array();
         $this->_md_content = '';
@@ -60,27 +60,55 @@ class PostPageParser {
         $all_divs = $doc->getElementsByTagName('div');
         $i = 0;
         while($div = $all_divs->item($i++)) {
-            $div_class = $div->getAttribute("class");
+            $div_class = explode(' ',$div->getAttribute("class"))[0];
             switch ($div_class) {
-                case 'article_title':
-                    $title = trim($div->nodeValue);
-                    $title = str_replace(array('\n'), '', $title);
-                    $this->_title = $title;
+                case 'article-title-box':
+                    foreach ($div->childNodes as $_item) {
+                        if ($_item->nodeType == XML_ELEMENT_NODE) {
+                            $_class = $_item->getAttribute('class');
+                            if ($_class == 'title-article') {
+                                $title = trim($_item->nodeValue);
+                                $title = str_replace(array('\n'), '', $title);
+                                $this->_title =  trim(preg_replace('/[\r\n]+/', "", str_replace(array('[置顶]', '([rn])[s]+'), '', $title)), ' ');
+                            }
+                        }
+                    }
+                    break;
+
+                case 'article-bar-top':
+                    foreach ($div->childNodes as $_item) {
+                        if ($_item->nodeType == XML_ELEMENT_NODE) {
+                            $_class = $_item->getAttribute('class');
+                            if ($_class == 'time') {
+                                $_date = trim($_item->nodeValue);
+                                $_date = str_replace('年','',$_date);
+                                $_date = str_replace('月','',$_date);
+                                $_date = str_replace('日','',$_date);
+                                $_date = str_replace(' ','',$_date);
+                                $this->_date = strtotime($_date);
+                                echo "\n";
+                                echo 'date: ' . $_date . $this->_date;
+                                echo "\n";
+                            }
+                        }
+                    }
                     break;
 
                 case 'article_manage':
-                    foreach ($div->childNodes as $_mag_item) {
-                        if ($_mag_item->nodeType == XML_ELEMENT_NODE) {
-                            $_class = $_mag_item->getAttribute('class');
-                            if ($_class == 'link_categories') {
-                                $_anchors = $_mag_item->getElementsByTagName('a');
-                                $_i = 0;
-                                while ($_a = $_anchors->item($_i++)) {
-                                    $this->_categories[] = trim($_a->nodeValue);
+                    foreach ($div->childNodes as $_mag_item_first) {
+                        foreach ($_mag_item_first->childNodes as $_mag_item) {
+                            if ($_mag_item->nodeType == XML_ELEMENT_NODE) {
+                                $_class = $_mag_item->getAttribute('class');
+                                if ($_class == 'link_categories') {
+                                    $_anchors = $_mag_item->getElementsByTagName('a');
+                                    $_i = 0;
+                                    while ($_a = $_anchors->item($_i++)) {
+                                        $this->_categories[] = trim($_a->nodeValue);
+                                    }
+                                } else if ($_class == 'link_postdate') {
+                                    $_date = trim($_mag_item->nodeValue);
+                                    $this->_date = strtotime($_date);
                                 }
-                            } else if ($_class == 'link_postdate') {
-                                $_date = trim($_mag_item->nodeValue);
-                                $this->_date = strtotime($_date);
                             }
                         }
                     }
@@ -109,7 +137,7 @@ class PostPageParser {
         $this->_md_content = @$this->_parse_element($content_node);
     }
 
-    public function save2md() {
+    public function save2md($index) {
 
         $front_matter_style = config_item('front-matter');
         if ($front_matter_style !== 'none' && $front_matter_style != '') {
@@ -117,16 +145,21 @@ class PostPageParser {
         }
 
         //去掉文件名中不可用的符号
-        $file_name = str_replace(array('\\', '/', '?', ':', '*', '<', '>', '"', '|'), '', $this->_title) . '.' .'md';
+        // $file_name = str_replace(array('\\', '/', '?', ':', '*', '<', '>', '"', '|'), '', $this->_title) . '.' .'md';
+        $file_name = $index . '-' . trim($this->_title) . '.' .'md';
 
         //windows下中文文件名乱码，其他系统不清楚会不会有这个问题
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $file_name = @iconv("utf-8", "gb2312//IGNORE", $file_name);
         }
+
         if (config_item('date_ahead_filename')) {
             $file_name = date('Y-m-d-', $this->_date).$file_name;
         }
 
+        echo "\n";
+        echo 'date: ' . $this->_date . ' title: ' . $this->_title . ' file_name: ' . $file_name;
+        echo "\n";
         file_put_contents(config_item('save_path').'/'.$file_name, $this->_md_content);
     }
 
@@ -147,10 +180,15 @@ class PostPageParser {
 
 
         $front_matter = preg_replace('#\{\stitle\s\}#', $this->_title, $front_matter);
+        $front_matter = preg_replace('#\{\surl\s\}#', $this->_request_url, $front_matter);
         $front_matter = preg_replace('#\{\sdate\s\}#', $date, $front_matter);
-        $glue = ($style === strtolower('jekyll')) ? ", " : "\n- ";
-        $front_matter = preg_replace('#\{\scategories\s\}#', join($glue, $this->_categories), $front_matter);
-        $front_matter = preg_replace('#\{\stags\s\}#', join($glue, $this->_tags), $front_matter);
+        $glue = ($style === strtolower('jekyll')) ? ", " : ", ";
+        $front_matter = preg_replace('#\{\scategories\s\}#', "娱乐", $front_matter);
+        if($this->_categories) {
+            $front_matter = preg_replace('#\{\stags\s\}#', '['.join($glue, $this->_categories). ']', $front_matter);
+        } else {
+            $front_matter = preg_replace('#\{\stags\s\}#', '', $front_matter);
+        }
 
         return $front_matter;
     }
@@ -289,7 +327,7 @@ class PostPageParser {
             $text_post = "\n";
         }
 
-        if ($node->hasChildNodes()) {
+        if ($node != null && $node->hasChildNodes()) {
             foreach($node->childNodes as $node){
                 $text .= $this->_parse_element($node);
             }

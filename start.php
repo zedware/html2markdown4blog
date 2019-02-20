@@ -54,11 +54,15 @@ if ($archive_url = config_item('archive_url')) {
     );
 }
 
-$post_parser = new PostPageParser();
 foreach ($post_list as $index=>$each_post) {
+
+    echo "\n";
+    echo 'url: ' . $each_post['url'];
+
+    $post_parser = new PostPageParser();
     $post_parser->init($each_post['url']);
     $post_parser->parse();
-    $post_parser->save2md();
+    $post_parser->save2md($index + 1);
 
     $title = isset($each_post['title']) ? $each_post['title'] : $post_parser->get_title();
     echo 'the ' . ordinalize(++$index). ' article already generated, title: ' . $title;

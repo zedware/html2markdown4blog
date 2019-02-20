@@ -17,9 +17,7 @@ $jekyll = <<<JEKYLL
 ---
 layout: post
 title: { title }
-date: { date }
-categories: [{ categories }]
-tags: [{ tags }]
+original: { url }
 ---
 
 JEKYLL;
@@ -27,10 +25,9 @@ JEKYLL;
 $hexo = <<<HEXO
 title: { title }
 date: { date }
-categories:
-- { categories }
-tags:
-- { tags }
+categories: { categories }
+tags: { tags }
+description:
 ---
 
 HEXO;
